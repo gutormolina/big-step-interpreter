@@ -119,15 +119,23 @@ cbigStep (Skip,s) = (Skip,s)
 cbigStep (If b c1 c2,s)
    | bbigStep (b,s) == True = cbigStep (c1,s)
    | otherwise = cbigStep (c2,s)
-cbigStep (Seq c1 c2,s)
-   let (r1, s1) = cbigStep (c1, s)
-   in cbigStep (c2,s1)
---cbigStep (Atrib (Var x) e,s) 
--- cbigStep (Twice c,s)   ---- Executa o comando C 2 vezes
-----cbigStep (RepeatUntil c b,s)   --- Repeat C until B: executa C até que B seja verdadeiro
---cbigStep (ExecN c e,s)      ---- ExecN C n: executa o comando C n vezes
---cbigStep (Swap (Var x) (Var y),s) --- recebe duas variáveis e troca o conteúdo delas
---cbigStep (DAtrrib (Var x) (Var y) e1 e2,s) -- Dupla atribuição: recebe duas variáveis x e y e duas expressões "e1" e "e2". Faz x:=e1 e y:=e2.
+cbigStep (Seq c1 c2,s) = let (r1, s1) = cbigStep (c1, s) in cbigStep (c2,s1)
+-- mudados e não testados a frente - Renzo:
+cbigStep (Atrib (Var x) e, s) = let result = ebigStep(e,s) in (Skip, mudaVar s x result)
+cbigStep (Twice c, s) = let (r, s1) = cbigStep(c, s) in cbigStep(c, s1)
+---- Executa o comando C 2 vezes
+cbigStep (RepeatUntil c b, s)
+   | bbigStep(b, s) == False = let (r, s1) = cbigStep(c, s) in cbigStep(RepeatUntil c b, s1)
+   | otherwise = (Skip, s)   
+--- Repeat C until B: executa C até que B seja verdadeiro
+cbigStep (ExecN c e, s)
+   | ebigStep(e, s) > 1 = let (r, s1) = cbigStep(c, s) in cbigStep (ExecN c (Num (ebigStep(e,s) - 1)), s1)
+   | otherwise = (Skip, s)      
+---- ExecN C n: executa o comando C n vezes
+cbigStep (Swap (Var x) (Var y), s) =  (Skip, let s1 = mudaVar s x (procuraVar s y) in mudaVar s1 y (procuraVar s x))
+--- recebe duas variáveis e troca o conteúdo delas
+cbigStep (DAtrrib (Var x) (Var y) e1 e2, s) = (Skip, let s1 = mudaVar s x (ebigStep (e1, s)) in mudaVar s1 y (ebigStep (e2, s1))) 
+-- Dupla atribuição: recebe duas variáveis x e y e duas expressões "e1" e "e2". Faz x:=e1 e y:=e2.
 
 --------------------------------------
 ---
@@ -184,3 +192,18 @@ fatorial = (Seq (Atrib (Var "y") (Num 1))
                 (While (Not (Igual (Var "x") (Num 1)))
                        (Seq (Atrib (Var "y") (Mult (Var "y") (Var "x")))
                             (Atrib (Var "x") (Sub (Var "x") (Num 1))))))
+
+-- Programas de Teste:
+
+testeDuplaAtrib :: C 
+testeDuplaAtrib = (DAtrrib (Var "x") (Var "y") (Num 5) (Num 2))
+
+
+testeDuplaAtrib2 :: C 
+testeDuplaAtrib2 = (DAtrrib (Var "x") (Var "y") (Var "y") (Num 5))
+
+
+-- teste bugado (memória utilizada é sempre mesma, x não atualiza logo não chega à 100)
+testeDoWhile :: C
+testeDoWhile = (Seq (Atrib (Var "x") (Num (procuraVar exSigma "x" + 1) )) 
+                  (RepeatUntil (Atrib (Var "x") (Num (procuraVar exSigma "x" + 1) )) (Leq (Num 100) (Var "x"))))
