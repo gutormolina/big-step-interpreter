@@ -129,13 +129,19 @@ cbigStep (RepeatUntil c b, s)
    | otherwise = (Skip, s)   
 --- Repeat C until B: executa C até que B seja verdadeiro
 cbigStep (ExecN c e, s)
-   | ebigStep(e, s) > 1 = let (r, s1) = cbigStep(c, s) in cbigStep (ExecN c (Num (ebigStep(e,s) - 1)), s1)
+   | ebigStep(e, s) >= 1 = let (r, s1) = cbigStep(c, s) in cbigStep (ExecN c (Num (ebigStep(e,s) - 1)), s1)
    | otherwise = (Skip, s)      
 ---- ExecN C n: executa o comando C n vezes
 cbigStep (Swap (Var x) (Var y), s) =  (Skip, let s1 = mudaVar s x (procuraVar s y) in mudaVar s1 y (procuraVar s x))
 --- recebe duas variáveis e troca o conteúdo delas
 cbigStep (DAtrrib (Var x) (Var y) e1 e2, s) = (Skip, let s1 = mudaVar s x (ebigStep (e1, s)) in mudaVar s1 y (ebigStep (e2, s1))) 
 -- Dupla atribuição: recebe duas variáveis x e y e duas expressões "e1" e "e2". Faz x:=e1 e y:=e2.
+
+-- While para o teste fatorial
+cbigStep (While b c, s)
+   | bbigStep(b, s) == True = cbigStep(Seq c (While b c), s)
+   | otherwise = (Skip, s)
+   
 
 --------------------------------------
 ---
@@ -195,15 +201,51 @@ fatorial = (Seq (Atrib (Var "y") (Num 1))
 
 -- Programas de Teste:
 
+exSigmaDuplaAtrib :: Memoria
+exSigmaDuplaAtrib = [("x", 1), ("y", 3), ("z", 0)]
+
 testeDuplaAtrib :: C 
 testeDuplaAtrib = (DAtrrib (Var "x") (Var "y") (Num 5) (Num 2))
-
 
 testeDuplaAtrib2 :: C 
 testeDuplaAtrib2 = (DAtrrib (Var "x") (Var "y") (Var "y") (Num 5))
 
+-- Teste para RepeatUntil:
+-- Este programa incrementa a variável "x" até que seu valor seja igual a 5.
+exSigmaRepeat :: Memoria
+exSigmaRepeat = [("x", 0), ("y", 0), ("z", 0)]
 
--- teste bugado (memória utilizada é sempre mesma, x não atualiza logo não chega à 100)
-testeDoWhile :: C
-testeDoWhile = (Seq (Atrib (Var "x") (Num (procuraVar exSigma "x" + 1) )) 
-                  (RepeatUntil (Atrib (Var "x") (Num (procuraVar exSigma "x" + 1) )) (Leq (Num 100) (Var "x"))))
+testeRepeatUntil :: C
+testeRepeatUntil = RepeatUntil 
+                     (Atrib (Var "x") (Soma (Var "x") (Num 1)))
+                     (Igual (Var "x") (Num 5))
+                     
+
+
+-- Teste para ExecN:
+-- Este programa incrementa a variável "y" em 2, repetindo o comando n vezes (4).
+exSigmaExecN :: Memoria
+exSigmaExecN = [("x", 0), ("y", 0), ("z", 0)]
+
+testeExecN :: C
+testeExecN = ExecN 
+               (Atrib (Var "y") (Soma (Var "y") (Num 2)))
+               (Num 4)
+               
+
+
+-- Teste para Twice:
+-- Este programa incrementa a variável "z" em 10 duas vezes.
+exSigmaTwice :: Memoria
+exSigmaTwice = [("x", 0), ("y", 0), ("z", 0)]
+
+testeTwice :: C
+testeTwice = Twice (Atrib (Var "z") (Soma (Var "z") (Num 10)))
+
+
+-- Teste para Swap:
+exSigmaSwap :: Memoria
+exSigmaSwap = [("x", 1), ("y", 2), ("z", 0)]
+
+testeSwap :: C
+testeSwap = Swap (Var "x") (Var "y")
