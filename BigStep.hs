@@ -249,3 +249,8 @@ exSigmaSwap = [("x", 1), ("y", 2), ("z", 0)]
 
 testeSwap :: C
 testeSwap = Swap (Var "x") (Var "y")
+
+testeWhile :: C
+testeWhile =   (Seq (Atrib (Var "x") (Num 1))
+                  (While (Not (Igual (Var "x") (Num 3)))
+                     (Atrib (Var "x") (Soma (Var "x") (Num 1)))))
